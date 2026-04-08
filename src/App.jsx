@@ -1,85 +1,156 @@
 import { useMemo, useState } from 'react';
-import NavTabs from './components/NavTabs';
-import BrowsePage from './pages/BrowsePage';
-import FavoritesPage from './pages/FavoritesPage';
-import PracticePage from './pages/PracticePage';
-import VerseAssistantPage from './pages/VerseAssistantPage';
-import { bibleWords } from './data/bibleWords';
-import useLocalStorage from './hooks/useLocalStorage';
+
+const sampleNames = [
+  { name: 'Nebuchadnezzar', phonetic: 'neh-byoo-kad-NEZ-uhr' },
+  { name: 'Mahershalalhashbaz', phonetic: 'mah-her-shal-al-hash-baz' },
+  { name: 'Hephzibah', phonetic: 'HEF-zih-buh' },
+  { name: 'Melchizedek', phonetic: 'mel-KIZ-uh-dek' },
+  { name: 'Habakkuk', phonetic: 'huh-BAK-uk' },
+  { name: 'Zerubbabel', phonetic: 'zuh-RUB-uh-bel' },
+  { name: 'Keturah', phonetic: 'keh-TOO-ruh' },
+  { name: 'Bezalel', phonetic: 'BEZ-uh-lel' },
+];
+
+function NameChip({ item, active, onSelect }) {
+  return (
+    <button
+      type="button"
+      className={`name-chip ${active ? 'active' : ''}`}
+      onClick={() => onSelect(item)}
+    >
+      <span className="chip-icon" aria-hidden="true">
+        ✦
+      </span>
+      <span>{item.name}</span>
+    </button>
+  );
+}
 
 function App() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [category, setCategory] = useState('All');
-  const [activeTab, setActiveTab] = useState('browse');
-  const [selectedWord, setSelectedWord] = useState(null);
-  const [favorites, setFavorites] = useLocalStorage('bible_word_favorites_v1', []);
+  const [name, setName] = useState('');
+  const [selectedSample, setSelectedSample] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [status, setStatus] = useState('Enter a Bible name and hear it spoken aloud.');
 
-  const filteredWords = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
+  const normalizedName = name.trim();
 
-    return bibleWords.filter(({ word, phonetic, category: itemCategory }) => {
-      const matchesSearch =
-        !normalizedSearch ||
-        word.toLowerCase().includes(normalizedSearch) ||
-        phonetic.toLowerCase().includes(normalizedSearch);
-
-      const matchesCategory = category === 'All' || category === itemCategory;
-      return matchesSearch && matchesCategory;
-    });
-  }, [searchTerm, category]);
-
-  const favoriteWords = useMemo(
-    () => bibleWords.filter((word) => favorites.includes(word.word)),
-    [favorites],
-  );
-
-  const toggleFavorite = (wordName) => {
-    setFavorites((current) =>
-      current.includes(wordName)
-        ? current.filter((name) => name !== wordName)
-        : [...current, wordName],
+  const phonetic = useMemo(() => {
+    const fromSample = sampleNames.find(
+      ({ name: sampleName }) => sampleName.toLowerCase() === normalizedName.toLowerCase(),
     );
+    return fromSample?.phonetic ?? 'Phonetic guide will appear for featured names.';
+  }, [normalizedName]);
+
+  const playPronunciation = () => {
+    if (!normalizedName) {
+      setStatus('Please type a name first.');
+      return;
+    }
+
+    if (!('speechSynthesis' in window)) {
+      setStatus('Speech synthesis is not supported in this browser.');
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(normalizedName);
+    utterance.rate = 0.9;
+    utterance.pitch = 1.02;
+
+    utterance.onstart = () => {
+      setIsPlaying(true);
+      setStatus(`Now pronouncing: ${normalizedName}`);
+    };
+
+    utterance.onend = () => {
+      setIsPlaying(false);
+      setStatus(`Finished. Tap again to replay ${normalizedName}.`);
+    };
+
+    utterance.onerror = () => {
+      setIsPlaying(false);
+      setStatus('Could not play pronunciation. Please try again.');
+    };
+
+    window.speechSynthesis.speak(utterance);
   };
 
-  const onSelectWord = (word) => {
-    setSelectedWord(word);
+  const handleSampleSelect = (item) => {
+    setSelectedSample(item.name);
+    setName(item.name);
+    setStatus(`Loaded sample: ${item.name}. Press Play Pronunciation.`);
   };
 
   return (
-    <main className="app-shell">
-      <header className="hero">
-        <h1>Bible Word Pronunciation</h1>
-        <p>Search, save favorites, and practice words with generated audio.</p>
-        <NavTabs activeTab={activeTab} onChange={setActiveTab} />
-      </header>
+    <main className="experience">
+      <div className="glow glow-left" aria-hidden="true" />
+      <div className="glow glow-right" aria-hidden="true" />
 
-      {activeTab === 'browse' && (
-        <BrowsePage
-          searchTerm={searchTerm}
-          onSearch={setSearchTerm}
-          category={category}
-          onCategoryChange={setCategory}
-          words={filteredWords}
-          selectedWord={selectedWord}
-          onSelectWord={onSelectWord}
-          favorites={favorites}
-          onToggleFavorite={toggleFavorite}
-        />
-      )}
+      <section className="hero-panel">
+        <p className="eyebrow">Bible Names Audio Lab</p>
+        <h1>
+          Pronounce the Word
+          <span>with confidence and rhythm.</span>
+        </h1>
+        <p className="hero-copy">
+          Type any Bible name, explore curated examples, and instantly hear polished pronunciation.
+        </p>
 
-      {activeTab === 'favorites' && (
-        <FavoritesPage
-          words={favoriteWords}
-          selectedWord={selectedWord}
-          onSelectWord={onSelectWord}
-          favorites={favorites}
-          onToggleFavorite={toggleFavorite}
-        />
-      )}
+        <div className="input-cluster">
+          <label htmlFor="name-input">Enter a Bible name</label>
+          <div className="input-shell">
+            <span className="input-icon" aria-hidden="true">
+              🔎
+            </span>
+            <input
+              id="name-input"
+              value={name}
+              onChange={(event) => {
+                setName(event.target.value);
+                setSelectedSample(null);
+              }}
+              placeholder="Try: Nebuchadnezzar"
+            />
+          </div>
+          <button
+            type="button"
+            className={`play-button ${isPlaying ? 'playing' : ''}`}
+            onClick={playPronunciation}
+          >
+            <span aria-hidden="true">{isPlaying ? '◉' : '▶'}</span>
+            Play Pronunciation
+          </button>
+        </div>
 
-      {activeTab === 'practice' && <PracticePage words={filteredWords} />}
+        <div className="status-bar" role="status" aria-live="polite">
+          {status}
+        </div>
+      </section>
 
-      {activeTab === 'verse-assistant' && <VerseAssistantPage words={bibleWords} />}
+      <section className="detail-panel">
+        <article className="phonetic-card">
+          <p className="card-label">Featured phonetic</p>
+          <h2>{normalizedName || 'Awaiting name input'}</h2>
+          <p className="phonetic-text">{phonetic}</p>
+        </article>
+
+        <article className="samples-card">
+          <div className="samples-headline">
+            <h3>Popular practice names</h3>
+            <p>Tap to load instantly</p>
+          </div>
+          <div className="chip-grid">
+            {sampleNames.map((item) => (
+              <NameChip
+                key={item.name}
+                item={item}
+                active={selectedSample === item.name}
+                onSelect={handleSampleSelect}
+              />
+            ))}
+          </div>
+        </article>
+      </section>
     </main>
   );
 }
