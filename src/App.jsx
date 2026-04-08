@@ -1,40 +1,82 @@
 import { useMemo, useState } from 'react';
-import SearchBar from './components/SearchBar';
-import WordList from './components/WordList';
-import WordDetail from './components/WordDetail';
+import NavTabs from './components/NavTabs';
+import BrowsePage from './pages/BrowsePage';
+import FavoritesPage from './pages/FavoritesPage';
+import PracticePage from './pages/PracticePage';
 import { bibleWords } from './data/bibleWords';
+import useLocalStorage from './hooks/useLocalStorage';
 
 function App() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [category, setCategory] = useState('All');
+  const [activeTab, setActiveTab] = useState('browse');
   const [selectedWord, setSelectedWord] = useState(null);
+  const [favorites, setFavorites] = useLocalStorage('bible_word_favorites_v1', []);
 
-  // Filter word list in real time from search input.
   const filteredWords = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
-    if (!normalizedSearch) return bibleWords;
 
-    return bibleWords.filter(
-      ({ word, phonetic }) =>
+    return bibleWords.filter(({ word, phonetic, category: itemCategory }) => {
+      const matchesSearch =
+        !normalizedSearch ||
         word.toLowerCase().includes(normalizedSearch) ||
-        phonetic.toLowerCase().includes(normalizedSearch),
+        phonetic.toLowerCase().includes(normalizedSearch);
+
+      const matchesCategory = category === 'All' || category === itemCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [searchTerm, category]);
+
+  const favoriteWords = useMemo(
+    () => bibleWords.filter((word) => favorites.includes(word.word)),
+    [favorites],
+  );
+
+  const toggleFavorite = (wordName) => {
+    setFavorites((current) =>
+      current.includes(wordName)
+        ? current.filter((name) => name !== wordName)
+        : [...current, wordName],
     );
-  }, [searchTerm]);
+  };
+
+  const onSelectWord = (word) => {
+    setSelectedWord(word);
+  };
 
   return (
     <main className="app-shell">
       <header className="hero">
         <h1>Bible Word Pronunciation</h1>
-        <p>Search difficult Bible names, view phonetics, and play audio.</p>
-        <SearchBar value={searchTerm} onChange={setSearchTerm} />
+        <p>Search, save favorites, and practice words with generated audio.</p>
+        <NavTabs activeTab={activeTab} onChange={setActiveTab} />
       </header>
 
-      <section className="content-grid">
-        <div>
-          <h2 className="section-title">Words ({filteredWords.length})</h2>
-          <WordList words={filteredWords} selectedWord={selectedWord} onSelect={setSelectedWord} />
-        </div>
-        <WordDetail word={selectedWord} />
-      </section>
+      {activeTab === 'browse' && (
+        <BrowsePage
+          searchTerm={searchTerm}
+          onSearch={setSearchTerm}
+          category={category}
+          onCategoryChange={setCategory}
+          words={filteredWords}
+          selectedWord={selectedWord}
+          onSelectWord={onSelectWord}
+          favorites={favorites}
+          onToggleFavorite={toggleFavorite}
+        />
+      )}
+
+      {activeTab === 'favorites' && (
+        <FavoritesPage
+          words={favoriteWords}
+          selectedWord={selectedWord}
+          onSelectWord={onSelectWord}
+          favorites={favorites}
+          onToggleFavorite={toggleFavorite}
+        />
+      )}
+
+      {activeTab === 'practice' && <PracticePage words={filteredWords} />}
     </main>
   );
 }
