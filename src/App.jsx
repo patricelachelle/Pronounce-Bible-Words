@@ -3,6 +3,7 @@ import NavTabs from './components/NavTabs';
 import BrowsePage from './pages/BrowsePage';
 import FavoritesPage from './pages/FavoritesPage';
 import PracticePage from './pages/PracticePage';
+import VerseAssistantPage from './pages/VerseAssistantPage';
 import { bibleWords } from './data/bibleWords';
 import useLocalStorage from './hooks/useLocalStorage';
 
@@ -77,6 +78,8 @@ function App() {
       )}
 
       {activeTab === 'practice' && <PracticePage words={filteredWords} />}
+
+      {activeTab === 'verse-assistant' && <VerseAssistantPage words={bibleWords} />}
     </main>
   );
 }

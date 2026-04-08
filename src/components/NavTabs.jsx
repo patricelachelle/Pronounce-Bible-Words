@@ -2,6 +2,7 @@ const tabs = [
   { id: 'browse', label: 'Browse' },
   { id: 'favorites', label: 'Favorites' },
   { id: 'practice', label: 'Practice' },
+  { id: 'verse-assistant', label: 'Verse Assistant' },
 ];
 
 function NavTabs({ activeTab, onChange }) {
